@@ -9,8 +9,20 @@ exports.handler = async function (event) {
   }
 
   try {
-    const payload = JSON.parse(event.body || '{}');
+    console.log('Content-Type recebido:', event.headers && event.headers['content-type']);
+    console.log('event.body (primeiros 500 caracteres):', (event.body || '').slice(0, 500));
+    console.log('typeof event.body:', typeof event.body);
+    console.log('isBase64Encoded:', event.isBase64Encoded);
+
+    const rawBody = event.isBase64Encoded
+      ? Buffer.from(event.body || '', 'base64').toString('utf8')
+      : (event.body || '{}');
+
+    const payload = JSON.parse(rawBody);
     const { mantis, itensRequisicao } = payload;
+
+    console.log('mantis is array:', Array.isArray(mantis), 'length:', mantis && mantis.length);
+    console.log('itensRequisicao is array:', Array.isArray(itensRequisicao), 'length:', itensRequisicao && itensRequisicao.length);
 
     if (!Array.isArray(mantis) || !Array.isArray(itensRequisicao)) {
       return {

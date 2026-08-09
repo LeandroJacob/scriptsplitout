@@ -14,11 +14,40 @@ exports.handler = async function (event) {
     console.log('typeof event.body:', typeof event.body);
     console.log('isBase64Encoded:', event.isBase64Encoded);
 
-    const rawBody = event.isBase64Encoded
-      ? Buffer.from(event.body || '', 'base64').toString('utf8')
-      : (event.body || '{}');
+    function tentarParsear(texto) {
+      try {
+        return JSON.parse(texto);
+      } catch (e) {
+        return null;
+      }
+    }
 
-    const payload = JSON.parse(rawBody);
+    const bodyOriginal = event.body || '{}';
+    let payload = null;
+
+    if (event.isBase64Encoded) {
+      // tenta decodificar de base64 primeiro (caminho esperado quando a flag está true)
+      const decodificado = Buffer.from(bodyOriginal, 'base64').toString('utf8');
+      payload = tentarParsear(decodificado);
+    }
+
+    // fallback: se a decodificacao de base64 falhou (ou a flag estava errada),
+    // tenta interpretar o body como texto puro
+    if (!payload) {
+      payload = tentarParsear(bodyOriginal);
+    }
+
+    if (!payload) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "Nao foi possivel interpretar o body recebido, nem como JSON puro nem como base64.",
+          isBase64Encoded: event.isBase64Encoded,
+          bodyPreview: bodyOriginal.slice(0, 200)
+        })
+      };
+    }
+
     const { mantis, itensRequisicao } = payload;
 
     console.log('mantis is array:', Array.isArray(mantis), 'length:', mantis && mantis.length);

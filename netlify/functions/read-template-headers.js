@@ -9,9 +9,16 @@ exports.handler = async (event) => {
       };
     }
 
-    const bodyBuffer = event.isBase64Encoded
-      ? Buffer.from(event.body, 'base64')
-      : Buffer.from(event.body, 'binary');
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Corpo da requisição vazio.' }),
+      };
+    }
+
+    // Sempre decodifica como base64 — o cliente deve enviar o arquivo
+    // já convertido para base64 como texto puro no body.
+    const bodyBuffer = Buffer.from(event.body, 'base64');
 
     const workbook = XLSX.read(bodyBuffer, { type: 'buffer' });
 
@@ -34,6 +41,9 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        debug_buffer_size: bodyBuffer.length,
+        debug_body_length_recebido: event.body.length,
+        debug_is_base64_encoded_flag: event.isBase64Encoded,
         sheet_names: workbook.SheetNames,
         mantis_columns: getHeaders('Mantis'),
         itens_columns: getHeaders('ItensRequisicao'),
@@ -43,7 +53,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: err.message, stack: err.stack }),
     };
   }
 };
